@@ -14,6 +14,7 @@ def generate_content(system_instruction: str, user_prompt: str) -> str:
     and return the generated text.
     """
 
+
     response = client.chat.completions.create(
         model=LLM_MODEL,
         messages=[
@@ -26,7 +27,7 @@ def generate_content(system_instruction: str, user_prompt: str) -> str:
                 "content": user_prompt
             }
         ],
-        temperature=0.3
+        temperature=0.3, max_tokens = 2000,
     )
 
     return response.choices[0].message.content

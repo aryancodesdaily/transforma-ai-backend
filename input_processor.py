@@ -10,6 +10,7 @@ SUPPORTED_EXTENSIONS = {
     ".doc",
     ".docx",
     ".txt",
+    ".pptx",
     ".md",
     ".csv",
     ".rtf",
@@ -72,8 +73,48 @@ def process_file(file_path: str) -> str:
             "Legacy .doc files are not supported yet. "
             "Please use .docx format."
         )
+    
+    if extension == ".pptx":
+        return process_pptx(path)
 
     raise ValueError(f"Unsupported file type: {extension}")
+
+
+from pptx import Presentation
+
+
+def process_pptx(file_path: str) -> str:
+    """
+    Extract all text (titles, body text, notes) from an uploaded .pptx
+    and return it as a single plain-text string for the LLM pipeline.
+    """
+
+    prs = Presentation(file_path)
+    parts = []
+
+    for i, slide in enumerate(prs.slides, start=1):
+        parts.append(f"Slide {i}:")
+
+        for shape in slide.shapes:
+            if shape.has_text_frame:
+                for para in shape.text_frame.paragraphs:
+                    text = "".join(run.text for run in para.runs).strip()
+                    if text:
+                        parts.append(text)
+
+        if slide.has_notes_slide:
+            notes = slide.notes_slide.notes_text_frame.text.strip()
+            if notes:
+                parts.append(f"Notes: {notes}")
+
+    extracted = "\n".join(parts).strip()
+
+    if not extracted:
+        raise ValueError("No readable text found in the uploaded PPTX file.")
+
+    return extracted
+
+
 
 
 def process_pdf(path: Path) -> str:

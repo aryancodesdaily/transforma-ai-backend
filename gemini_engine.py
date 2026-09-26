@@ -1,112 +1,53 @@
-"""
-gemini_engine.py
-
-Handles image-related AI features.
-
-The external function names are kept unchanged so the rest of the
-application does not need to know which AI provider is being used.
-
-Internally:
-- Vision: Hugging Face + Qwen2.5-VL
-- Image generation: Hugging Face + FLUX.1-schnell
-"""
-
+import os
 import base64
+from io import BytesIO
+
+from google import genai
+from google.genai import types
+
+from config import GEMINI_API_KEY
+
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY is missing from .env")
+
+_client = genai.Client(api_key=GEMINI_API_KEY)
+
+
 
 from huggingface_hub import InferenceClient
 
-from config import HF_TOKEN
+HF_API_KEY = os.getenv("HF_API_KEY")
+HF_IMAGE_MODEL = os.getenv("HF_IMAGE_MODEL")
+
+if not HF_API_KEY:
+    raise ValueError("HF_API_KEY is missing from .env")
+
+if not HF_IMAGE_MODEL:
+    raise ValueError("HF_IMAGE_MODEL is missing from .env")
+
+_hf_client = InferenceClient(
+    api_key=HF_API_KEY
+)
 
 
-_client = None
-
-
-def _get_client() -> InferenceClient:
-    """
-    Lazily create the Hugging Face client only when an image feature
-    is actually used.
-    """
-    global _client
-
-    if _client is None:
-        if not HF_TOKEN:
-            raise ValueError(
-                "HF_TOKEN is missing from .env. "
-                "Add your Hugging Face API token to use image features."
-            )
-
-        _client = InferenceClient(
-            provider="auto",
-            api_key=HF_TOKEN,
-        )
-
-    return _client
-
-
-def extract_content_from_image(
-    image_bytes: bytes,
-    mime_type: str
-) -> str:
-    """
-    Use a Hugging Face vision-language model to read/describe an
-    uploaded image and return the extracted content as plain text.
-
-    Function name intentionally kept unchanged so the rest of the
-    application does not need to change.
-    """
-
-    client = _get_client()
-
-    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
-
-    image_data_url = (
-        f"data:{mime_type};base64,{image_base64}"
-    )
-
-    response = client.chat_completion(
-        model="Qwen/Qwen2.5-VL-3B-Instruct",
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": image_data_url
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": (
-                            "Extract all readable text from this image "
-                            "and describe any relevant visual content "
-                            "(charts, diagrams, photos, layout) factually "
-                            "and in detail. Do not add opinions or "
-                            "information that is not visible in the image."
-                        ),
-                    },
-                ],
-            }
+def extract_content_from_image(image_bytes: bytes, mime_type: str) -> str:
+    response = _client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=[
+            types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+            (
+                "Extract all readable text from this image and describe "
+                "any relevant visual content (charts, diagrams, photos, "
+                "layout) factually and in detail. Do not add opinions or "
+                "information that is not visible in the image."
+            ),
         ],
-        max_tokens=2000,
     )
 
-    text = response.choices[0].message.content
-
-    if isinstance(text, list):
-        text = " ".join(
-            item.get("text", "")
-            for item in text
-            if isinstance(item, dict)
-        )
-
-    text = (text or "").strip()
+    text = (response.text or "").strip()
 
     if not text:
-        raise ValueError(
-            "Hugging Face vision model could not extract any content "
-            "from the image."
-        )
+        raise ValueError("Gemini could not extract any content from the image.")
 
     return text
 
@@ -116,52 +57,23 @@ def generate_image_from_content(
     output_path: str,
     language: str = "English"
 ) -> None:
-    """
-    Turn transformed text content into a generated image using
-    Hugging Face + FLUX.1-schnell.
-
-    Function name intentionally kept unchanged so the rest of the
-    application does not need to change.
-    """
-
-    client = _get_client()
 
     image_prompt = (
         "Create a single clear, professional infographic based strictly "
         "on the content provided below.\n\n"
 
-        "LANGUAGE REQUIREMENT:\n"
-        f"ALL VISIBLE TEXT IN THE IMAGE MUST BE WRITTEN ONLY IN {language}.\n"
-        f"The selected output language is {language}.\n"
-        "Do not use any other language.\n\n"
+        f"All visible text must be written only in {language}.\n"
 
-        "TEXT ACCURACY RULES:\n"
-        "1. Use only meaningful words and sentences from the provided "
-        "content.\n"
-        "2. Do not invent words, phrases, headings, labels, numbers, "
-        "names, dates, statistics, or facts.\n"
-        "3. Do not replace words with synonyms or another language.\n"
-        "4. Do not generate random or meaningless text.\n"
-        "5. Preserve important names, numbers, dates, and terminology "
-        "accurately.\n"
-        "6. If a piece of text cannot be rendered accurately, leave it "
-        "out instead of generating incorrect text.\n"
-        "7. Keep all headings and labels short, clear, and readable.\n"
-        "8. Do not add information that is not supported by the content.\n\n"
-
-        "VISUAL REQUIREMENTS:\n"
-        "Create a clean, professional infographic with a logical layout, "
-        "clear sections, appropriate icons or illustrations, and good "
-        "visual hierarchy. The visual design should support the content "
-        "without changing its meaning.\n\n"
-
+        "Do not invent facts, numbers, names, dates, or information.\n"
+        "Use a clean professional infographic layout with clear visual "
+        "hierarchy, icons, illustrations, and logical sections.\n\n"
         "CONTENT:\n"
         f"{content}"
     )
 
-    image = client.text_to_image(
+    image = _hf_client.text_to_image(
         prompt=image_prompt,
-        model="black-forest-labs/FLUX.1-schnell",
+        model=HF_IMAGE_MODEL
     )
 
     image.save(output_path)

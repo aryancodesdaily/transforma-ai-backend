@@ -10,8 +10,6 @@ from pathlib import Path
 from uuid import uuid4
 
 from config import ALLOWED_ORIGINS
-from database import save_transformation
-from hashing import hash_content, hash_file
 from input_processor import process_file, process_text
 
 
@@ -32,11 +30,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Maps output_format -> correct Content-Type for the download,
-# instead of always sending application/octet-stream.
 MEDIA_TYPES = {
     "PDF": "application/pdf",
     "DOCX": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "PPTX": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     "PNG": "image/png",
 }
 
@@ -44,22 +41,19 @@ MAX_FILES = 5
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
 MAX_SOURCE_TEXT_LENGTH = 100_000
 
+
 @app.get("/")
 def root():
-    return {
-        "message": "AI Content Transformation API is running"
-    }
+    return {"message": "AI Content Transformation API is running"}
 
 
 @app.get("/health")
 def health_check():
-    return {
-        "status": "healthy"
-    }
+    return {"status": "healthy"}
 
 
 @app.post("/transform")
-async def transform_content(
+def transform_content(
     background_tasks: BackgroundTasks,
     source_text: str = Form(""),
     files: List[UploadFile] = File(default=[]),
@@ -88,18 +82,12 @@ async def transform_content(
             detail="Source text is too large.",
         )
 
-    # Process text entered directly by the user
     if source_text.strip():
-        extracted_contents.append(
-            process_text(source_text)
-        )
+        extracted_contents.append(process_text(source_text))
 
-    # Process uploaded files
     for uploaded_file in files:
-
         file_extension = Path(uploaded_file.filename).suffix.lower()
-
-        file_content = await uploaded_file.read()
+        file_content = uploaded_file.file.read()
 
         if len(file_content) > MAX_FILE_SIZE_BYTES:
             raise HTTPException(
@@ -116,31 +104,19 @@ async def transform_content(
 
         try:
             extracted_content = process_file(temp_file_path)
-
             extracted_contents.append(
-                f"===== {uploaded_file.filename} =====\n\n"
-                f"{extracted_content}"
+                f"===== {uploaded_file.filename} =====\n\n{extracted_content}"
             )
-
-        # Surfaces a clean error instead of a raw 500 if an image can't
-        # be read (e.g. HF_TOKEN missing, or an unreadable image)
         except ValueError as error:
-            return {
-                "error": f"Could not process '{uploaded_file.filename}': {error}"
-            }
-
+            return {"error": f"Could not process '{uploaded_file.filename}': {error}"}
         finally:
             Path(temp_file_path).unlink(missing_ok=True)
 
-    # Make sure at least one source was provided
     if not extracted_contents:
-        return {
-            "error": "Please provide source text or upload at least one file."
-        }
+        return {"error": "Please provide source text or upload at least one file."}
 
-    # Combine all source content
     combined_source_content = "\n\n".join(extracted_contents)
-    input_hash = hash_content(combined_source_content)
+
     transformation_prompt = build_transformation_prompt(
         source_content=combined_source_content,
         audience=audience,
@@ -154,9 +130,9 @@ async def transform_content(
     )
 
     generated_content = generate_content(
-    system_instruction=SYSTEM_INSTRUCTION,
-    user_prompt=transformation_prompt
-)
+        system_instruction=SYSTEM_INSTRUCTION,
+        user_prompt=transformation_prompt
+    )
 
     output_directory = Path("generated_outputs")
     output_directory.mkdir(exist_ok=True)
@@ -164,24 +140,14 @@ async def transform_content(
     file_extension = output_format.lower()
     output_file_path = output_directory / f"{uuid4().hex}.{file_extension}"
 
-    # Catches image-generation failures (e.g. missing HF_TOKEN)
-    # cleanly instead of crashing with a raw 500
     try:
         generate_output(
             content=generated_content,
             output_format=output_format,
             output_path=str(output_file_path)
         )
-        output_hash = hash_file(str(output_file_path))
-        save_transformation(
-        input_hash=input_hash,
-        output_hash=output_hash
-)
-
     except ValueError as error:
-        return {
-            "error": f"Could not generate {output_format} output: {error}"
-        }
+        return {"error": f"Could not generate {output_format} output: {error}"}
 
     background_tasks.add_task(output_file_path.unlink, missing_ok=True)
 
@@ -191,3 +157,5 @@ async def transform_content(
         media_type=MEDIA_TYPES.get(output_format.upper(), "application/octet-stream"),
         background=background_tasks,
     )
+
+

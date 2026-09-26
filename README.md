@@ -4,7 +4,7 @@ Backend service for the AI-powered content transformation platform developed for
 
 ## Overview
 
-This backend accepts source content such as text and documents, applies user-defined transformation parameters, uses AI to generate the requested communication artefact, and returns the generated output in the selected format.
+This backend accepts source content such as text, documents, presentations and images, applies user-defined transformation parameters, uses AI to generate the requested communication artefact, and returns the generated output in the selected format.
 
 ## Architecture
 
@@ -12,53 +12,49 @@ Frontend
 ↓
 FastAPI
 ↓
-Input Processing
+Input Processing (text / PDF / DOCX / PPTX / image)
 ↓
 Unified Source Text
 ↓
 Prompt Builder
 ↓
-LLM
+LLM (Groq)
 ↓
 Generated Content
 ↓
 Output Generator
 ↓
-PDF / DOCX / PNG
+PDF / DOCX / PPTX / PNG
 
 ## Features
 
 - Text-based content transformation
-- PDF and DOCX document processing
+- PDF, DOCX and PPTX document processing
+- Image content understanding (extracts text and visual context from uploaded images)
 - Configurable target audience
 - Configurable communication objective
 - Configurable tone
 - Configurable language
 - Configurable detail level
 - Configurable content style
-- Multiple output types
-- PDF, DOCX and PNG output
+- Multiple output types, including social media formats (LinkedIn, Twitter/X, Instagram)
+- PDF, DOCX, PPTX and PNG output
 - AI-powered content generation using Groq
-- Image understanding using Hugging Face vision models
+- Image understanding using Gemini vision
 - AI-generated visual output using Hugging Face image generation
-- SHA-256 hashing for content integrity
-- Hash-chained transformation records stored in MongoDB Atlas
 
 ## Tech Stack
 
 - Python
 - FastAPI
 - Uvicorn
-- Groq API
-- GPT-OSS 120B
-- Hugging Face
-- Qwen2.5-VL
-- FLUX.1-schnell
+- Groq API (GPT-OSS 120B)
+- Google Gemini API (vision)
+- Hugging Face Inference API (image generation)
 - PyPDF
 - python-docx
+- python-pptx
 - ReportLab
-- MongoDB Atlas
-- SHA-256
 - python-dotenv
 
 ## Project Structure
@@ -72,9 +68,8 @@ backend/
 ├── ai_engine.py
 ├── output_generator.py
 ├── gemini_engine.py
-├── hashing.py
-├── database.py
 ├── requirements.txt
 ├── .env
 ├── .gitignore
 └── README.md
+```

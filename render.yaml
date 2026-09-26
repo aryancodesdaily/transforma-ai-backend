@@ -13,7 +13,5 @@ services:
         value: openai/gpt-oss-120b
       - key: HF_TOKEN
         sync: false
-      - key: MONGODB_URI
-        sync: false
       - key: ALLOWED_ORIGINS
         sync: false
