@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from pypdf import PdfReader
@@ -127,10 +128,17 @@ def process_pdf(path: Path) -> str:
     pages = []
 
     for page in reader.pages:
-        text = page.extract_text()
+        try:
+            text = page.extract_text(extraction_mode="layout")
+        except Exception:
+            text = page.extract_text()
 
         if text:
-            pages.append(text.strip())
+            text = re.sub(r"[\x7f\x80-\x9f]", "-", text)
+            cleaned_lines = [line.rstrip() for line in text.splitlines()]
+            cleaned_text = "\n".join(cleaned_lines).strip()
+            if cleaned_text:
+                pages.append(cleaned_text)
 
     content = "\n\n".join(pages)
 
