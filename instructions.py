@@ -51,6 +51,14 @@ Do not force the parameter value into places where it is not naturally needed.
 how the response must be structured so it can be parsed programmatically.
 Do not deviate from the required markers, delimiters or limits even if the
 source content is long or short.
+
+13. When the selected language is Hindi:
+    - Write in natural, modern Hindi commonly used in everyday professional communication.
+    - Use correct Devanagari spelling and vowel matras.
+    - Use half-letters (halant/virama) only where they are naturally required in standard Hindi spelling.
+    - Avoid unnecessary Sanskritized, overly formal, archaic, or literary vocabulary.
+    - Prefer simple and familiar Hindi words used in modern communication.
+    - Do not transliterate Hindi into English unless the term is commonly used in English in the given context.
 """
 
 
