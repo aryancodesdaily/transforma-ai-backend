@@ -12,6 +12,9 @@ from uuid import uuid4
 from config import ALLOWED_ORIGINS
 from input_processor import process_file, process_text
 
+from hashing import hash_content
+from mongodb_service import store_transformation
+
 
 app = FastAPI(
     title="AI Content Transformation Platform",
@@ -116,6 +119,8 @@ def transform_content(
         return {"error": "Please provide source text or upload at least one file."}
 
     combined_source_content = "\n\n".join(extracted_contents)
+    
+    input_hash = hash_content(combined_source_content)
 
     transformation_prompt = build_transformation_prompt(
         source_content=combined_source_content,
@@ -132,6 +137,24 @@ def transform_content(
     generated_content = generate_content(
         system_instruction=SYSTEM_INSTRUCTION,
         user_prompt=transformation_prompt
+    )
+    
+    output_hash = hash_content(generated_content)
+    
+    transformation_record = store_transformation(
+        input_hash=input_hash,
+        output_hash=output_hash,
+        transformation_details={
+            "audience": audience,
+            "objective": objective,
+            "tone": tone,
+            "language": language,
+            "detail_level": detail_level,
+            "content_style": content_style,
+            "output_type": output_type,
+            "output_format": output_format,
+            "additional_instructions": additional_instructions
+        }
     )
 
     output_directory = Path("generated_outputs")

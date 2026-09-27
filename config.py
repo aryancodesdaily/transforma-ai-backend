@@ -9,7 +9,7 @@ LLM_API_KEY = os.getenv("LLM_API_KEY")
 LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-120b")
 
 HF_TOKEN = os.getenv("HF_TOKEN")
-# MONGODB_URI = os.getenv("MONGODB_URI")
+MONGODB_URI = os.getenv("MONGODB_URI")
 GEMINI_API_KEY=os.getenv("GEMINI_API_KEY")
 
 def get_allowed_origins() -> list[str]:
