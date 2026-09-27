@@ -9,4 +9,5 @@ pypdf
 python-docx
 python-pptx
 reportlab
-pymongo
+pymongo[srv]
+slowapi

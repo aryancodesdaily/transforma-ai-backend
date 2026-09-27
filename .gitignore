@@ -9,7 +9,6 @@ __pycache__/
 .venv/
 venv/
 env/
-hashing.py
 # Generated output files
 generated_outputs/
 
@@ -20,7 +19,7 @@ test.docx
 test.png
 ppt_test_output.pptx
 generated_test.png
-
+spanish_test.txt
 
 # OS / Editor
 .DS_Store

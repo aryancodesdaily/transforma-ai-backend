@@ -1,7 +1,8 @@
 from pathlib import Path
 import re
 import html
-
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT
@@ -128,7 +129,13 @@ def generate_pptx(content: str, output_path: str):
     prs.save(output_path)
 
 
+FONT_PATH = Path(__file__).parent / "fonts" / "NotoSansDevanagari-Regular.ttf"
+print("FONT PATH:", FONT_PATH)
+print("FONT EXISTS:", FONT_PATH.exists())
 
+pdfmetrics.registerFont(
+    TTFont("NotoDevanagari", str(FONT_PATH))
+)
 
     
 def generate_pdf(content: str, output_path: str):
@@ -150,7 +157,7 @@ def generate_pdf(content: str, output_path: str):
     body_style = ParagraphStyle(
         "Body",
         parent=styles["BodyText"],
-        fontName="Helvetica",
+        fontName="NotoDevanagari",
         fontSize=10,
         leading=15,
         alignment=TA_LEFT,
@@ -160,7 +167,7 @@ def generate_pdf(content: str, output_path: str):
     heading_style = ParagraphStyle(
         "Heading",
         parent=styles["Heading2"],
-        fontName="Helvetica-Bold",
+        fontName="NotoDevanagari",
         fontSize=12,
         leading=16,
         spaceBefore=10,
@@ -170,7 +177,7 @@ def generate_pdf(content: str, output_path: str):
     title_style = ParagraphStyle(
         "Title",
         parent=styles["Title"],
-        fontName="Helvetica-Bold",
+        fontName="NotoDevanagari",
         fontSize=16,
         leading=20,
         spaceAfter=14,
