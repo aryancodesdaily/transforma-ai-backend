@@ -91,3 +91,48 @@ if __name__ == "__main__":
     )
 
     print(result)
+    
+def verify_transformation(
+    input_hash: str,
+    output_hash: str
+):
+    """
+    Verify whether an output was generated from a particular input.
+
+    Returns one of three verdicts:
+
+    1. input_file_never_received
+    2. output_file_never_generated
+    3. output_was_generated_by_input
+    """
+
+    document = transformations_collection.find_one(
+        {"input_hash": input_hash}
+    )
+
+    # Case 1:
+    # This input has never been seen before.
+    if document is None:
+        return {
+            "verdict": "input_file_never_received",
+            "message": "This input was never received by the system."
+        }
+
+    # The input exists.
+    # Now check all outputs generated from it.
+    for output in document.get("outputs", []):
+
+        if output.get("output_hash") == output_hash:
+            return {
+                "verdict": "output_was_generated_by_input",
+                "message": "This output was generated from this input.",
+                "transformation_id": output.get("transformation_id"),
+                "timestamp": output.get("timestamp"),
+                "user_id": output.get("user_id")
+            }
+
+    # Input exists, but this output does not belong to it.
+    return {
+        "verdict": "output_file_never_generated",
+        "message": "This output was never generated from this input."
+    }
