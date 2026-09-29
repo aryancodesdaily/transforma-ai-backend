@@ -1,4 +1,4 @@
-from pymongo import MongoClient
+from pymongo import ASCENDING, MongoClient
 from pymongo.errors import ConnectionFailure
 
 from config import MONGODB_URI
@@ -20,11 +20,20 @@ except ConnectionFailure as error:
 
 db = client["transforma_ai"]
 
-transformations_collection = db["transformations"]
+# Flat, append-only chain of transformation records. Each transformation
+# gets its own document (no grouping by input hash), linked to the
+# previous record by prev_hash, so tampering with any past record
+# breaks the chain from that point forward.
+chain_records_collection = db["chain_records"]
 
-# Very important:
-# One document must exist for each unique input hash.
-transformations_collection.create_index(
-    "input_hash",
+# sequence must be unique and strictly increasing -> guarantees the
+# chain has exactly one record per position, even under concurrent writes.
+chain_records_collection.create_index(
+    "sequence",
     unique=True
+)
+
+# Speeds up single-pair lookups used by /verify.
+chain_records_collection.create_index(
+    [("input_hash", ASCENDING), ("output_hash", ASCENDING)]
 )

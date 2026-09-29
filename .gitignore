@@ -11,7 +11,7 @@ venv/
 env/
 # Generated output files
 generated_outputs/
-
+before-schema-change-4-files/
 # Test files
 test_*.py
 test.pdf
